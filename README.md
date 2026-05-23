@@ -255,6 +255,26 @@ Run tests in Xcode: **Product → Test** (⌘U).
 
 ---
 
+
+## What I Would Improve With More Time
+
+If given additional time, I would further enhance the project in the following areas:
+
+- Add full accessibility support including VoiceOver optimization and improved keyboard navigation.
+- Improve dropdown UX with searchable multi-select support and chip-based selections.
+- Add animation polish and transition states for a more refined user experience.
+- Expand defensive parsing support to handle deeply malformed or partially invalid payloads more gracefully.
+- Add analytics/event tracking hooks for dynamic form interaction monitoring. such as if user types a URI so he can review it also from there directly.
+
+The current implementation focuses on delivering a clean, scalable, fully offline, server-driven SwiftUI architecture while covering all required assignment features and validation scenarios.
+
+
+## Anything I got stuck
+I was able to complete the overall implementation without major blockers. However, one area where I intentionally leveraged AI assistance was advanced keyboard handling and focus management within TEXT fields.
+
+I used AI agent to accelerate the implementation of keyboard behavior and input focus coordination. After receiving the suggested implementation, I carefully reviewed the generated approach, validated the behavior, understood the underlying SwiftUI interaction patterns, and then refined the solution to fit the architecture and UI requirements.
+
+
 ## Author
 
 Mohd Naqvi — Eulerity take-home exercise submission.
