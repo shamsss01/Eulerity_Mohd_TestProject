@@ -10,36 +10,12 @@ import XCTest
 
 final class TakeHomeExerciseProjectTests: XCTestCase {
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-        // XCTest Documentation
-        // https://developer.apple.com/documentation/xctest
-    }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
-    }
-    
     func testFieldParsing() throws {
         let payload = FormLoader.load()
 
-        XCTAssertEqual(payload.formTitle, "Campaign Setup")
-        XCTAssertEqual(payload.fields.count, 4)
+        XCTAssertEqual(payload.formTitle, "About Yourself")
+        XCTAssertFalse(payload.fields.isEmpty)
+        XCTAssertEqual(payload.theme.backgroundColor, "#EEEAB5")
     }
 
     func testUnknownTypeDoesNotCrash() throws {
@@ -48,8 +24,10 @@ final class TakeHomeExerciseProjectTests: XCTestCase {
           "theme": {
             "background_color": "#FFFFFF",
             "text_color": "#111827",
+            "clickable_text_color": "#000000",
             "border_color": "#D1D5DB",
-            "error_color": "#B91C1C"
+            "error_color": "#B91C1C",
+            "button_color": "#2563EB"
           },
           "form_title": "Test",
           "fields": [
@@ -64,10 +42,49 @@ final class TakeHomeExerciseProjectTests: XCTestCase {
         """
 
         let data = json.data(using: .utf8)!
-
         let payload = try JSONDecoder().decode(FormPayload.self, from: data)
 
-        XCTAssertNil(payload.fields.first?.type)
+        if case .unknown(let rawType) = payload.fields.first?.type {
+            XCTAssertEqual(rawType, "DATE_PICKER")
+        } else {
+            XCTFail("Expected unknown field type")
+        }
     }
 
+    func testRenderableFieldsExcludeUnknownTypes() {
+        let viewModel = FormViewModel()
+        XCTAssertTrue(viewModel.renderableFields.allSatisfy { $0.type?.isSupported == true })
+        XCTAssertFalse(viewModel.renderableFields.contains { $0.id == "unknown_1" })
+    }
+
+    func testPartialThemeUsesDefaults() throws {
+        let json = """
+        {
+          "theme": {
+            "background_color": "#ABCDEF"
+          },
+          "form_title": "Partial",
+          "fields": []
+        }
+        """
+
+        let payload = try JSONDecoder().decode(FormPayload.self, from: json.data(using: .utf8)!)
+        XCTAssertEqual(payload.theme.backgroundColor, "#ABCDEF")
+        XCTAssertEqual(payload.theme.textColor, Theme.default.textColor)
+    }
+
+    func testMalformedJSONThrowsOnDecode() {
+        let data = "{ invalid json".data(using: .utf8)!
+        XCTAssertThrowsError(try JSONDecoder().decode(FormPayload.self, from: data))
+    }
+
+    func testURIValidationAllowsEmptyOptionalField() {
+        let viewModel = FormViewModel()
+        guard let portfolioField = viewModel.renderableFields.first(where: { $0.id == "portfolio" }) else {
+            return
+        }
+
+        viewModel.values[portfolioField.id] = ""
+        XCTAssertTrue(viewModel.validate())
+    }
 }

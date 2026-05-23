@@ -12,226 +12,200 @@ struct DynamicFieldView: View {
     @Binding var value: Any?
     let error: String?
     let theme: Theme
+    var focusedFieldID: FocusState<String?>.Binding
+    let isLastKeyboardField: Bool
+    let onKeyboardNext: () -> Void
+
     @State private var text: String = ""
-    
+    @State private var isExpanded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             switch field.type {
             case .text:
                 textFieldView
-                
+
             case .dropdown:
                 dropdownView
-                
+
             case .toggle:
                 Toggle(
-                    field.label,
+                    field.label.isEmpty ? " " : field.label,
                     isOn: Binding(
                         get: { value as? Bool ?? false },
                         set: { value = $0 }
                     )
                 )
-                
+                .tint(theme.button)
+
             case .checkbox:
-                HStack(alignment: .center) {
-                    Image(systemName: (value as? Bool ?? false) == true
-                          ? "checkmark.square"
-                          : "square")
-                    .frame(width: 25, height: 25)
-                    .onTapGesture {
-                        value = !(value as? Bool ?? false)
-                    }
-                    if let link = field.link,
-                       !link.isEmpty,
-                       let url = URL(string: link) {
-                        Link(destination: url) {
-                            Text(field.label)
-                                .underline()
-                                .foregroundColor(Color(hex: theme.clickableTextColor))
-                        }
-                    } else {
-                        Text(field.label)
-                            .foregroundColor(Color(hex: theme.textColor))
-                    }
-                }
-                
-            case .unknown:
+                checkboxView
+
+            case .unknown, .none:
                 EmptyView()
-                
-            case .none:
-                EmptyView()
-                
             }
-            
-            if let error {
+
+            if let error, !error.isEmpty {
                 Text(error)
-                    .foregroundColor(Color(hex: theme.errorColor))
+                    .foregroundStyle(theme.error)
                     .font(.caption)
             }
         }
-        .foregroundStyle(Color(hex: theme.textColor))
+        .foregroundStyle(theme.text)
     }
-    
+
+    // MARK: - Text fields
+
     @ViewBuilder
-    var textFieldView: some View {
+    private var textFieldView: some View {
         VStack(alignment: .leading) {
             switch field.subtype {
             case .secure:
-                SecureField(
-                    field.placeholder ?? "",
-                    text: $text
+                applyKeyboardNavigation(to:
+                    SecureField(field.placeholder ?? "", text: $text)
                 )
-                .onAppear {
-                    text = value as? String ?? ""
-                }
-                .onChange(of: text) { newValue in
-                    if let max = field.maxLength,
-                       newValue.count > max {
-                        text = String(newValue.prefix(max))
-                    }
-                    value = text
-                }
-                .foregroundStyle(Color(hex: theme.textColor))
-                .frame(height: 40)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(
-                            Color(hex: theme.borderColor),
-                            lineWidth: 1
-                        )
-                )
+
             case .multiline:
-                ZStack(alignment: .topLeading) {
-                    if text.isEmpty {
-                        Text(field.placeholder ?? "")
-                            .foregroundColor(.gray)
-                            .padding(.top, 6)
-                            .padding(.leading, 5)
-                            .opacity(0.6)
-                    }
-                    TextEditor(
-                        text: $text
-                    )
-                    .onAppear {
-                        text = value as? String ?? ""
-                    }
-                    .onChange(of: text) { newValue in
-                        if let max = field.maxLength,
-                           newValue.count > max {
-                            
-                            text = String(newValue.prefix(max))
-                        }
-                        value = text
-                    }
-                    .foregroundStyle(Color(hex: theme.textColor))
-                    .frame(height: 100)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(
-                                Color(hex: theme.borderColor),
-                                lineWidth: 1
-                            )
-                    )
-                    .scrollContentBackground(.hidden)
-                }
+                applyKeyboardNavigation(to: multilineEditor)
+
             default:
-                TextField(
-                    field.placeholder ?? "",
-                    text: $text
-                )
-                .onAppear {
-                    text = value as? String ?? ""
-                }
-                .onChange(of: text) { newValue in
-                    if let max = field.maxLength,
-                       newValue.count > max {
-                        
-                        text = String(newValue.prefix(max))
-                    }
-                    value = text
-                }
-                .keyboardType(keyboardType)
-                .foregroundStyle(Color(hex: theme.textColor))
-                .frame(height: 40)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(
-                            Color(hex: theme.borderColor),
-                            lineWidth: 1
-                        )
+                applyKeyboardNavigation(to:
+                    TextField(field.placeholder ?? "", text: $text)
+                        .keyboardType(keyboardType)
                 )
             }
+
             if let max = field.maxLength {
-                HStack {
-                    Spacer()
-                    Text("\((value as? String ?? "").count)/\(max)")
-                        .font(.caption)
-                        .foregroundStyle(
-                            ((value as? String ?? "").count <= max)
-                            ? Color(hex: theme.textColor)
-                            : Color(hex: theme.errorColor)
-                        )
-                        .opacity(0.6)
+                characterCounter(max: max)
+            }
+        }
+        .onAppear {
+            text = value as? String ?? ""
+        }
+        .onChange(of: text) { newValue in
+            let limited = limit(newValue, maxLength: field.maxLength)
+            if limited != text {
+                text = limited
+            }
+            value = text
+        }
+    }
+
+    private var multilineEditor: some View {
+        ZStack(alignment: .topLeading) {
+            if text.isEmpty, let placeholder = field.placeholder, !placeholder.isEmpty {
+                Text(placeholder)
+                    .foregroundStyle(theme.text.opacity(0.45))
+                    .padding(.top, 8)
+                    .padding(.leading, 5)
+                    .allowsHitTesting(false)
+            }
+
+            TextEditor(text: $text)
+                .frame(minHeight: 100)
+                .scrollContentBackground(.hidden)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(theme.border, lineWidth: 1)
+                )
+                .keyboardType(.default)
+        }
+    }
+
+    @ViewBuilder
+    private func applyKeyboardNavigation<Content: View>(to content: Content) -> some View {
+        content
+            .focused(focusedFieldID, equals: field.id)
+            .submitLabel(isLastKeyboardField ? .done : .next)
+            .onSubmit(onKeyboardNext)
+            .foregroundStyle(theme.text)
+            .background(.clear)
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 8)
+            .frame(minHeight: field.subtype == .multiline ? nil : 40)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(theme.border, lineWidth: field.subtype == .multiline ? 0 : 1)
+            )
+    }
+
+    @ViewBuilder
+    private func characterCounter(max: Int) -> some View {
+        let count = (value as? String ?? "").count
+        HStack {
+            Spacer()
+            Text("\(count)/\(max)")
+                .font(.caption)
+                .foregroundStyle(count <= max ? theme.text.opacity(0.6) : theme.error)
+        }
+    }
+
+    // MARK: - Checkbox
+
+    private var checkboxView: some View {
+        HStack(alignment: .center) {
+            Image(systemName: (value as? Bool ?? false) ? "checkmark.square.fill" : "square")
+                .frame(width: 25, height: 25)
+                .onTapGesture {
+                    value = !(value as? Bool ?? false)
                 }
+
+            if let link = field.link,
+               !link.isEmpty,
+               let url = URL(string: link) {
+                Link(destination: url) {
+                    Text(field.label)
+                        .underline()
+                        .foregroundStyle(theme.clickableText)
+                }
+            } else {
+                Text(field.label)
+                    .foregroundStyle(theme.text)
             }
         }
     }
-    
-    @State private var isExpanded = false
-    var dropdownView: some View {
+
+    // MARK: - Dropdown
+
+    private var dropdownView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Button {
+                focusedFieldID.wrappedValue = nil
+                hideKeyboard()
                 withAnimation {
                     isExpanded.toggle()
                 }
             } label: {
                 HStack {
-                    if field.allowMultiple == true {
-                        Text(selectedMultiTitles.isEmpty
-                             ? "Select options"
-                             : selectedMultiTitles)
-                    } else {
-                        Text(selectedSingleTitle.isEmpty
-                             ? "Select option"
-                             : selectedSingleTitle)
-                    }
+                    Text(dropdownSummary)
                     Spacer()
-                    Image(systemName: isExpanded
-                          ? "chevron.up"
-                          : "chevron.down")
-                    
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 }
-                .foregroundStyle(Color(hex: theme.textColor))
+                .foregroundStyle(theme.text)
                 .padding()
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+
             if isExpanded {
                 VStack(spacing: 0) {
                     Divider()
                     ForEach(field.options ?? []) { option in
                         Button {
-                            if field.allowMultiple == true {
-                                toggleSelection(option.id)
-                            } else {
-                                value = option.id
-                                withAnimation {
-                                    isExpanded = false
-                                }
-                            }
+                            selectOption(option.id)
                         } label: {
                             HStack {
                                 Text(option.label)
-                                    .foregroundStyle(Color(hex: theme.textColor))
+                                    .foregroundStyle(theme.text)
                                 Spacer()
                                 if isSelected(option.id) {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(Color(hex: theme.textColor))
+                                        .foregroundStyle(theme.text)
                                 }
                             }
                             .padding()
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(height: 40)
+                        .frame(minHeight: 40)
                         Divider()
                     }
                 }
@@ -240,14 +214,13 @@ struct DynamicFieldView: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(
-                    Color(hex: theme.borderColor),
-                    lineWidth: 1
-                )
+                .stroke(theme.border, lineWidth: 1)
         )
     }
-    
-    var keyboardType: UIKeyboardType {
+
+    // MARK: - Helpers
+
+    private var keyboardType: UIKeyboardType {
         switch field.subtype {
         case .number:
             return .numberPad
@@ -257,33 +230,13 @@ struct DynamicFieldView: View {
             return .default
         }
     }
-    
-    func isSelected(_ id: String) -> Bool {
-        let current = value as? [String] ?? []
-        return current.contains(id)
-    }
-    
-    func toggleSelection(_ id: String) {
-        var current = value as? [String] ?? []
-        if current.contains(id) {
-            current.removeAll { $0 == id }
-        } else {
-            current.append(id)
+
+    private var dropdownSummary: String {
+        if field.allowMultiple == true {
+            let labels = selectedOptionLabels
+            return labels.isEmpty ? "Select options" : labels.joined(separator: ", ")
         }
-        value = current
-    }
-    
-    var selectedMultiTitles: String {
-        let current = value as? [String] ?? []
-        let labels = field.options?
-            .filter { current.contains($0.id) }
-            .map(\.label) ?? []
-        return labels.isEmpty
-        ? "Select options"
-        : (isExpanded ? "Select options" : labels.joined(separator: ", "))
-    }
-    
-    var selectedSingleTitle: String {
+
         guard
             let selected = value as? String,
             let option = field.options?.first(where: { $0.id == selected })
@@ -291,5 +244,41 @@ struct DynamicFieldView: View {
             return "Select option"
         }
         return option.label
+    }
+
+    private var selectedOptionLabels: [String] {
+        let current = value as? [String] ?? []
+        return field.options?
+            .filter { current.contains($0.id) }
+            .map(\.label) ?? []
+    }
+
+    private func isSelected(_ id: String) -> Bool {
+        if field.allowMultiple == true {
+            return (value as? [String] ?? []).contains(id)
+        }
+        return (value as? String) == id
+    }
+
+    private func selectOption(_ id: String) {
+        if field.allowMultiple == true {
+            var current = value as? [String] ?? []
+            if current.contains(id) {
+                current.removeAll { $0 == id }
+            } else {
+                current.append(id)
+            }
+            value = current
+        } else {
+            value = id
+            withAnimation {
+                isExpanded = false
+            }
+        }
+    }
+
+    private func limit(_ string: String, maxLength: Int?) -> String {
+        guard let maxLength, string.count > maxLength else { return string }
+        return String(string.prefix(maxLength))
     }
 }

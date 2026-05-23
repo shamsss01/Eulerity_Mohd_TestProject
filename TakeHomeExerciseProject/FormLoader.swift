@@ -7,18 +7,43 @@
 
 import Foundation
 
+enum FormLoadResult {
+    case success(FormPayload)
+    case failure(String)
+}
+
 final class FormLoader {
     static func load() -> FormPayload {
+        switch loadResult() {
+        case .success(let payload):
+            return payload
+        case .failure(let message):
+            print("FormLoader: \(message)")
+            return .empty
+        }
+    }
+
+    static func loadResult() -> FormLoadResult {
         guard let url = Bundle.main.url(forResource: "form", withExtension: "json") else {
-            fatalError("Missing form.json")
+            return .failure("form.json not found in bundle")
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            return .failure("Could not read form.json: \(error.localizedDescription)")
+        }
+
+        guard !data.isEmpty else {
+            return .failure("form.json is empty")
         }
 
         do {
-            let data = try Data(contentsOf: url)
-            return try JSONDecoder().decode(FormPayload.self, from: data)
+            let payload = try JSONDecoder().decode(FormPayload.self, from: data)
+            return .success(payload)
         } catch {
-            print("Failed to load JSON: \(error)")
-            return FormPayload(theme: Theme(backgroundColor: "FFFFFF", textColor: "", clickableTextColor: "", borderColor: "", errorColor: "", buttonColor: ""), formTitle: "", fields: [])
+            return .failure("Could not parse form.json: \(error.localizedDescription)")
         }
     }
 }
