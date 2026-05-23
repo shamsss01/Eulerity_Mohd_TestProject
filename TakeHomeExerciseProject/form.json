@@ -1,0 +1,131 @@
+
+{
+    "theme": {
+        "background_color": "#EEEAB5",
+        "text_color": "#764D0A",
+        "clickable_text_color": "#000000",
+        "border_color": "#BABABA",
+        "error_color": "#DF1A0F",
+        "button_color": "#CAC249"
+    },
+    "form_title": "About Yourself",
+    "fields": [
+        {
+            "id": "full_name",
+            "order": 1,
+            "type": "TEXT",
+            "subtype": "PLAIN",
+            "title": "Full Name",
+            "label": "Full Name",
+            "placeholder": " e.g., John Deo",
+            "max_length": 30,
+            "error_message": "Name is required.",
+            "required": true
+        },
+        {
+            "id": "phone_number",
+            "order": 2,
+            "type": "TEXT",
+            "subtype": "NUMBER",
+            "title": "Phone Number",
+            "label": "Phone Number",
+            "placeholder": " 0001112223",
+            "max_length": 10,
+            "error_message": "Phone Number is required.",
+            "required": true
+        },
+        {
+            "id": "consent",
+            "order": 3,
+            "type": "TOGGLE",
+            "title": "",
+            "label": "I consent to receive the SMS",
+            "error_message": "",
+            "required": false
+        },
+        {
+            "id": "gender",
+            "order": 4,
+            "type": "DROPDOWN",
+            "title": "Gender",
+            "label": "Select",
+            "allow_multiple": false,
+            "default_values": [],
+            "required": true,
+            "options": [
+                { "id": "male", "label": "Male" },
+                { "id": "female", "label": "Female" }
+            ]
+        },
+        {
+            "id": "portfolio",
+            "order": 5,
+            "type": "TEXT",
+            "subtype": "URI",
+            "title": "Portfolio",
+            "label": "Portfolio",
+            "placeholder": " https://www.xyz.com",
+            "error_message": "Portfolio is required.",
+            "required": false
+        },
+        
+        {
+            "id": "skills",
+            "order": 6,
+            "type": "DROPDOWN",
+            "title": "Your Skills",
+            "label": "Select",
+            "allow_multiple": true,
+            "default_values": [],
+            "required": true,
+            "options": [
+                { "id": "engineer", "label": "Engineer" },
+                { "id": "marketing_assistant", "label": "Marketing Assistant" },
+                { "id": "problem_solver", "label": "Problem Solver" }
+            ]
+        },
+        {
+            "id": "bio",
+            "order": 7,
+            "type": "TEXT",
+            "subtype": "MULTILINE",
+            "title": "About Yourself",
+            "label": "About Yourself",
+            "placeholder": " About yourself...",
+            "error_message": "About Yourself is required.",
+            "required": false,
+            "max_length": 250
+        },
+        {
+            "id": "password",
+            "order": 8,
+            "type": "TEXT",
+            "subtype": "SECURE",
+            "title": "Enter Password",
+            "label": "Enter Password",
+            "placeholder": " ********",
+            "error_message": "Enter Password is required.",
+            "required": true
+        },
+        {
+            "id": "accept_legal",
+            "order": 9,
+            "type": "CHECKBOX",
+            "title": "",
+            "link": "https://www.apple.com",
+            "label": "I agree to the Terms of Service.",
+            "error_message": "Check is required.",
+            "required": true
+        },
+        {
+            "id": "unknown_1",
+            "order": 10,
+            "type": "DATE_PICKER",
+            "title": "",
+            "link": "",
+            "label": "Unknown_1",
+            "error_message": "",
+            "required": false
+        }
+    ]
+}
